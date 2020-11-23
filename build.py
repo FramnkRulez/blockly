@@ -240,6 +240,7 @@ goog.provide('Blockly.FieldLabel');
 goog.provide('Blockly.FieldMultilineInput');
 goog.provide('Blockly.FieldNumber');
 goog.provide('Blockly.FieldTextInput');
+goog.provide('Blockly.FieldTextInputTypeAhead');
 goog.provide('Blockly.FieldVariable');
 goog.provide('Blockly.Mutator');
 goog.provide('Blockly.Warning');
