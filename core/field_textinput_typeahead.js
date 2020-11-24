@@ -70,7 +70,7 @@ Blockly.FieldTextInputTypeAhead.prototype.widgetCreate_ = function() {
     htmlInput.value = htmlInput.defaultValue = this.getEditorText_(this.value_);
     htmlInput.untypedDefaultValue_ = this.value_;
     htmlInput.oldValue_ = null;
-    this.autocomplete_(htmlInput, this.menuGenerator_);
+    this.autocomplete_(this, htmlInput, this.menuGenerator_);
   
     this.resizeEditor_();
   
@@ -79,14 +79,14 @@ Blockly.FieldTextInputTypeAhead.prototype.widgetCreate_ = function() {
     return htmlInput;
   };
 
-Blockly.FieldTextInputTypeAhead.prototype.autocomplete_ = function(inp, menuGenerator) {
+Blockly.FieldTextInputTypeAhead.prototype.autocomplete_ = function(block, inp, menuGenerator) {
     var fieldInput = this;
 
     /*the autocomplete function takes two arguments,
     the text field element and an array of possible autocompleted values:*/
     var currentFocus;
     /*execute a function when someone writes in the text field:*/
-    inp.addEventListener("input", function(e) {
+    inp.addEventListener("input", function(e) {        
         var a, b, i, val = this.value;
         /*close any already open lists of autocompleted values*/
         closeAllLists();
@@ -101,7 +101,7 @@ Blockly.FieldTextInputTypeAhead.prototype.autocomplete_ = function(inp, menuGene
 
         var generator;
         if(typeof menuGenerator == 'function') {
-            generator = menuGenerator.call(this);
+            generator = menuGenerator.call(this, block);
         } else {
             generator = menuGenerator;
         }
