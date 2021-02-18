@@ -8,8 +8,9 @@
 goog.provide('Blockly.FieldTextInputTypeAhead');
 goog.require('Blockly.FieldTextInput');
 
-Blockly.FieldTextInputTypeAhead = function(opt_value, menuGenerator, opt_validator) {
+Blockly.FieldTextInputTypeAhead = function(opt_value, opt_validator, menuGenerator, valueSeparator) {
     this.menuGenerator_ = menuGenerator;
+    this.valueSeparator_ = valueSeparator;
 
     opt_value = this.doClassValidation_(opt_value);
     if (opt_value === null) {
@@ -21,7 +22,7 @@ Blockly.utils.object.inherits(Blockly.FieldTextInputTypeAhead, Blockly.FieldText
 
 Blockly.FieldTextInputTypeAhead.fromJson = function(options) {
     var value = Blockly.utils.replaceMessageReferences(options['value']);
-    return new Blockly.FieldTextInputTypeAhead(value, options['options']);
+    return new Blockly.FieldTextInputTypeAhead(value, undefined, options['options'], options['separator']);
   };
 
 /**
@@ -80,37 +81,68 @@ Blockly.FieldTextInputTypeAhead.prototype.widgetCreate_ = function() {
   };
 
 Blockly.FieldTextInputTypeAhead.prototype.autocomplete_ = function(block, inp, menuGenerator) {
-    var fieldInput = this;
+    var typeAheadBlock = this;
 
     /*the autocomplete function takes two arguments,
     the text field element and an array of possible autocompleted values:*/
     var currentFocus;
     /*execute a function when someone writes in the text field:*/
-    inp.addEventListener("input", function(e) {        
+
+    var showAutoComplete = function(e) {        
         var a, b, i, val = this.value;
         /*close any already open lists of autocompleted values*/
         closeAllLists();
-        if (!val) { return false;}
+        //if (!val) { return false;}
         currentFocus = -1;
-        /*create a DIV element that will contain the items (values):*/
-        a = document.createElement("DIV");
-        a.setAttribute("id", this.id + "autocomplete-list");
-        a.setAttribute("class", "autocomplete-items");
-        /*append the DIV element as a child of the autocomplete container:*/
-        this.parentNode.appendChild(a);
 
         var generator;
         if(typeof menuGenerator == 'function') {
-            generator = menuGenerator.call(this, block);
+            generator = menuGenerator.call(this, block, val);
         } else {
             generator = menuGenerator;
         }
 
+        // If there's a value separator, split the value string and set val to the last entry
+        var splitTokens = null;
+        var separator;
+        if(typeof typeAheadBlock.valueSeparator_ !== 'undefined') {
+          if(typeof typeAheadBlock.valueSeparator_ == 'function') {
+            separator = typeAheadBlock.valueSeparator_.call(this, block);
+          } else {
+            separator = typeAheadBlock.valueSeparator_;
+          }
+
+          splitTokens = val.split(separator);
+          val = splitTokens[splitTokens.length-1];
+        }
+
+        // Remove whitespace before matching value.
+        val = val.trim();
+
+        // Inside the promise 'this' no longer means the input field
+        var inputField = this;
         Promise.resolve(generator).then(function(arr) {
+            if(arr.length === 0) {
+                return false;
+            }
+            
+            /*create a DIV element that will contain the items (values):*/
+            a = document.createElement("DIV");
+            a.setAttribute("id", inputField.id + "autocomplete-list");
+            a.setAttribute("class", "autocomplete-items");
+            
+
+            var matches = 0;
             /*for each item in the array...*/
             for (i = 0; i < arr.length; i++) {
             /*check if the item starts with the same letters as the text field value:*/
-            if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+            if (val === null || val.length === 0 || arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+                if(val && val === arr[i]) {
+                  continue;
+                }
+
+                matches++;
+
                 /*create a DIV element for each matching element:*/
                 b = document.createElement("DIV");
                 /*make the matching letters bold:*/
@@ -119,18 +151,38 @@ Blockly.FieldTextInputTypeAhead.prototype.autocomplete_ = function(block, inp, m
                 /*insert a input field that will hold the current array item's value:*/
                 b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
                 /*execute a function when someone clicks on the item value (DIV element):*/
-                    b.addEventListener("click", function(e) {
+                b.addEventListener("click", function(e) {
                     /*insert the value for the autocomplete text field:*/
-                    inp.value = this.getElementsByTagName("input")[0].value;
+                    var newValue = this.getElementsByTagName("input")[0].value;
+
+                    if(splitTokens === null || splitTokens.length == 1) {
+                      inp.value = newValue;
+                    } else {
+                      splitTokens.pop();
+                      splitTokens.push(newValue);
+                      inp.value = splitTokens.join(separator);
+                    }
                     /*close the list of autocompleted values,
                     (or any other open lists of autocompleted values:*/
                     closeAllLists();
-                    fieldInput.onHtmlInputChange_(this);
+                    typeAheadBlock.onHtmlInputChange_(inputField);
+
+                    inp.focus();
                 });
                 a.appendChild(b);
             }
-        }});
-    });
+        }
+
+        /*append the DIV element as a child of the autocomplete container:*/
+        if(matches > 0) {
+          inputField.parentNode.appendChild(a);      
+        }
+      });
+    };
+
+    inp.addEventListener("input", showAutoComplete);
+    inp.addEventListener("focus", showAutoComplete);
+
     /*execute a function presses a key on the keyboard:*/
     inp.addEventListener("keydown", function(e) {
         var x = document.getElementById(this.id + "autocomplete-list");
