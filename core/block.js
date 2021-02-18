@@ -580,8 +580,7 @@ Blockly.Block.prototype.lastConnectionInStack = function() {
  * connected should not coincidentally line up on screen.
  */
 Blockly.Block.prototype.bumpNeighbours = function() {
-  console.warn('Not expected to reach Block.bumpNeighbours function. ' +
-      'BlockSvg.bumpNeighbours was expected to be called instead.');
+  // noop.
 };
 
 /**
@@ -840,7 +839,6 @@ Blockly.Block.prototype.setShadow = function(shadow) {
 /**
  * Get whether this block is an insertion marker block or not.
  * @return {boolean} True if an insertion marker.
- * @package
  */
 Blockly.Block.prototype.isInsertionMarker = function() {
   return this.isInsertionMarker_;
